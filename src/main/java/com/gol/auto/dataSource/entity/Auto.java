@@ -10,5 +10,7 @@ public class Auto {
     private boolean jtaTransactionManager;
     private String dataSourceClassName;
     private String basePackages;
+    private String configPath;
+    private String dbPrefix;
     private List<DataBase> databases;
 }
