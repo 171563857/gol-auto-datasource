@@ -128,7 +128,7 @@ public class ProcessorUtils {
                 .build();
 
 //        com.gol.auto.dataSource.configuration
-        JavaFile javaFile = JavaFile.builder("com.geeboo.microservice.custom.configuration.dataSource", finderClass)
+        JavaFile javaFile = JavaFile.builder("cn.gol.configuration", finderClass)
                 .build();
         javaFile.writeTo(filer);
     }
