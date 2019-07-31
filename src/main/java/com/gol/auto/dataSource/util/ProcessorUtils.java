@@ -4,6 +4,7 @@ import com.gol.auto.dataSource.entity.Auto;
 import com.gol.auto.dataSource.entity.Config;
 import com.gol.auto.dataSource.entity.DataBase;
 import com.squareup.javapoet.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
@@ -14,7 +15,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
-import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
@@ -61,7 +61,7 @@ public class ProcessorUtils {
         AtomicBoolean first = new AtomicBoolean(true);
 
         for (DataBase database : config.getDatabases()) {
-            if (StringUtils.isEmpty(database.getSchema()) || StringUtils.isEmpty(database.getMapperPackages())) {
+            if (StringUtils.isBlank(database.getSchema()) || StringUtils.isBlank(database.getMapperPackages())) {
                 throw new Exception("schema属性或mapperPackage属性缺失!!!");
             }
             String name = database.getMapperPackages().substring(0, 1).toUpperCase() + database.getMapperPackages().substring(1);
@@ -128,7 +128,7 @@ public class ProcessorUtils {
                 .build();
 
 //        com.gol.auto.dataSource.configuration
-        JavaFile javaFile = JavaFile.builder("cn.gol.configuration", finderClass)
+        JavaFile javaFile = JavaFile.builder(StringUtils.isBlank(config.getConfigPath()) ? "cn.gol.configuration" : config.getConfigPath(), finderClass)
                 .build();
         javaFile.writeTo(filer);
     }
