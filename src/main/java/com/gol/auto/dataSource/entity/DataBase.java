@@ -6,4 +6,5 @@ import lombok.Data;
 public class DataBase {
     private String schema;
     private String mapperPackages;
+    private ReadDataBase readDataBase;
 }

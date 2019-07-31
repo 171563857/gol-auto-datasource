@@ -20,5 +20,8 @@ gol:
     - schema: user
       # xml文件地址,多个地址用","逗号隔开,例如'user',路径为resources/mapper/user
       mapperPackage: user
+      readDataBase: # 读库
+        schema:
+        mapperPackage:
     - schema: book
       mapperPackage: book

@@ -13,7 +13,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Set;
 
-@SupportedAnnotationTypes("com.gol.auto.dataSource.annotation.EnableAutoDataSource")
+@SupportedAnnotationTypes("*")
 @SupportedOptions("debug")
 @AutoService(Processor.class)
 public class DataSourceProcessor extends AbstractProcessor {
@@ -39,15 +39,18 @@ public class DataSourceProcessor extends AbstractProcessor {
         String country = processingEnv.getLocale().getCountry();
         try {
             // 获取autoDataSource.yml配置文件流
-            FileObject yml = ProcessorUtils.getAutoDataSourceYml(filer, country);
+            FileObject yml = ProcessorUtils.getAutoDataSourceYml(processingEnv, filer, country);
+            if (null == yml) {
+                return false;
+            }
             // 解析autoDataSource.yml配置文件
             Auto config = ProcessorUtils.analysis(yml, country);
             // 生成dataSource文件
             ProcessorUtils.generateJavaFile(filer, config, country);
-            alreadyCreate = true;
         } catch (Exception e) {
             fatalError(e);
         } finally {
+            alreadyCreate = true;
             return false;
         }
     }

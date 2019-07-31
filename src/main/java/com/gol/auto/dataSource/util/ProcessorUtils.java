@@ -19,8 +19,10 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 import javax.annotation.processing.Filer;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.sql.DataSource;
+import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.InputStream;
@@ -30,14 +32,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ProcessorUtils {
 
-    public static FileObject getAutoDataSourceYml(Filer filer, String country) throws Exception {
-        FileObject yml = filer.getResource(StandardLocation.CLASS_OUTPUT, "", "autoDataSource.yml");
-//        if (yml.getLastModified() == 0) {
-//            String error = country.equals("CN")
-//                    ? "在resources目录下未找到autoDataSource.yml 配置文件!!!"
-//                    : "did not found autoDataSource.yml in resources folder !!!";
-//            throw new Exception(error);
-//        }
+    public static FileObject getAutoDataSourceYml(ProcessingEnvironment processingEnv, Filer filer, String country) throws Exception {
+        FileObject yml = null;
+        try {
+            yml = filer.getResource(StandardLocation.CLASS_OUTPUT, "", "autoDataSource.yml");
+            yml.openInputStream().available();
+        } catch (Exception e) {
+            String error = country.equals("CN")
+                    ? "在resources目录下未找到autoDataSource.yml 配置文件!!!需要您自己定义DataSource和SqlSessionFactory!!!"
+                    : "Did not found autoDataSource.yml in resources folder !!!Need defined DataSource and SqlSessionFactory by yourself!!!";
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.MANDATORY_WARNING, "FATAL WARNING: " + error);
+            return null;
+        }
         return yml;
     }
 
@@ -62,7 +68,10 @@ public class ProcessorUtils {
 
         for (DataBase database : config.getDatabases()) {
             if (StringUtils.isBlank(database.getSchema()) || StringUtils.isBlank(database.getMapperPackages())) {
-                throw new Exception("schema属性或mapperPackage属性缺失!!!");
+                String error = country.equals("CN")
+                        ? "schema属性或mapperPackage属性缺失!!!"
+                        : "Can't find gol.auto.databases[].schema or gol.auto.databases[].mapperPackage properties !!!";
+                throw new Exception(error);
             }
             String name = database.getMapperPackages().substring(0, 1).toUpperCase() + database.getMapperPackages().substring(1);
             String[] basePackages = database.getMapperPackages().split(",");
@@ -83,9 +92,6 @@ public class ProcessorUtils {
         String factoryBeanName = String.format("%sSqlSessionFactory", database.getMapperPackages());
         String templateBeanName = String.format("%sSqlSessionTemplate", database.getMapperPackages());
         String dataSourceBeanName = String.format("%sDataSource", database.getMapperPackages());
-//        String factoryBeanName = "sqlSessionFactory";
-//        String templateBeanName = "sqlSessionTemplate";
-//        String dataSourceBeanName = "dataSource";
         // 注解
         List<AnnotationSpec> annotationSpecs = new ArrayList<>();
         AnnotationSpec configuration = AnnotationSpec.builder(Configuration.class).build();
@@ -96,9 +102,6 @@ public class ProcessorUtils {
                 .addMember("sqlSessionTemplateRef", "$S", templateBeanName)
                 .build();
         annotationSpecs.add(mapperScan);
-        // 注入 EnvironmentUtil
-//        FieldSpec environmentUtil = FieldSpec.builder(EnvironmentUtil.class, "environmentUtil", Modifier.PRIVATE)
-//                .addAnnotation(Autowired.class).build();
         // propertyResolver
         FieldSpec propertyResolver = FieldSpec.builder(RelaxedPropertyResolver.class, "propertyResolver", Modifier.PRIVATE).build();
         // 方法列表
@@ -122,25 +125,15 @@ public class ProcessorUtils {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotations(annotationSpecs)
                 .addSuperinterface(ParameterizedTypeName.get(EnvironmentAware.class))
-//                .addField(environmentUtil)
                 .addField(propertyResolver)
                 .addMethods(methodSpecs)
                 .build();
-
-//        com.gol.auto.dataSource.configuration
-        JavaFile javaFile = JavaFile.builder(StringUtils.isBlank(config.getConfigPath()) ? "cn.gol.configuration" : config.getConfigPath(), finderClass)
+        String packageName = null == config.getConfigPath() || "".equals(config.getConfigPath())
+                ? "cn.gol.configuration"
+                : config.getConfigPath();
+        JavaFile javaFile = JavaFile.builder(packageName, finderClass)
                 .build();
         javaFile.writeTo(filer);
-    }
-
-    private static void mapperScannerConfigurer(DataBase database, AtomicBoolean first, Filer filer, Auto config,
-                                                String name, String basePackages) {
-        // 字符串拼接
-        String mapperBeanName = String.format("%sMapperScannerConfigurer", database.getMapperPackages());
-        // 注解
-        List<AnnotationSpec> annotationSpecs = new ArrayList<>();
-        AnnotationSpec configuration = AnnotationSpec.builder(Configuration.class).build();
-        annotationSpecs.add(configuration);
     }
 
     private static MethodSpec dataSource(String schema, String dataSourceBeanName, AtomicBoolean first, Auto config) {
@@ -150,7 +143,6 @@ public class ProcessorUtils {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(DataSource.class)
                 .addAnnotation(bean);
-//                .addStatement("$T propertyResolver = environmentUtil.propertyResolver()", RelaxedPropertyResolver.class);
         if (config.isJtaTransactionManager()) {
             builder.addStatement("return $T.atomikos(this.propertyResolver, $S)", DataSourceUtils.class, schema);
         } else {

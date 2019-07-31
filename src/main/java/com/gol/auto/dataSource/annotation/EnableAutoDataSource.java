@@ -1,7 +1,5 @@
 package com.gol.auto.dataSource.annotation;
 
-import org.springframework.context.annotation.ComponentScan;
-
 import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
